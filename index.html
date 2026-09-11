@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Selection Wall</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💿</text></svg>">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand">
+      <p class="brand-eyebrow">Albums of the Month &middot; Wall Display</p>
+      <h1>The Selection Wall</h1>
+      <p>Pick eight from the crates, arrange them two rows of four, and let a theme do the suggesting when you want a head start.</p>
+    </div>
+    <div class="controls">
+      <div class="field">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select">
+          <option value="">No theme &mdash; browse freely</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="search-input">Search catalog</label>
+        <input type="text" id="search-input" placeholder="Artist or album&hellip;" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button type="button" id="clear-wall-btn" class="secondary">Clear wall</button>
+      </div>
+    </div>
+  </header>
+
+  <p class="theme-note" id="theme-note"></p>
+
+  <section class="wall" id="wall" aria-label="Albums of the month wall, eight slots"></section>
+
+  <section class="catalog-section">
+    <div class="catalog-head">
+      <h2>Full catalog</h2>
+      <span class="catalog-count" id="catalog-count"></span>
+    </div>
+    <div class="catalog-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24%">Artist</th>
+            <th style="width:28%">Album</th>
+            <th>Tags</th>
+            <th style="width:80px">Cover</th>
+            <th style="width:90px">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="catalog-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="footer-note">
+    Cover art loads automatically from the iTunes catalog the first time each album is shown, then is cached in your browser. If iTunes doesn't have a match — or the artwork looks wrong — click <code>fix cover</code> on any catalog row to paste your own image link. Your wall layout and any manual cover links are saved in this browser only (<code>localStorage</code>); use <strong>Export</strong> / <strong>Import</strong> below to move your setup between computers or back it up.
+  </p>
+
+  <div class="io-row">
+    <button type="button" id="export-btn" class="secondary">Export my data</button>
+    <label class="secondary file-label">
+      Import data
+      <input type="file" id="import-input" accept="application/json">
+    </label>
+  </div>
+</div>
+
+<input type="file" id="hidden-upload-input" class="upload-input" accept="image/png,image/jpeg,image/webp,image/gif">
+
+<script src="app.js"></script>
+</body>
+</html>
