@@ -37,7 +37,7 @@
   {
     "id": "anberlin-new-surrendar",
     "artist": "Anberlin",
-    "album": "New Surrendar",
+    "album": "New Surrender",
     "genres": [
       "rock",
       "emo",
@@ -80,7 +80,8 @@
     "moods": [
       "uplifting"
     ],
-    "seasons": []
+    "seasons": [],
+    "skipCoverLookup": true
   },
   {
     "id": "the-album-leaf-in-a-safe-place",
@@ -223,7 +224,7 @@
   {
     "id": "balance-and-composure-the-things-we-think-we-re-missing-live",
     "artist": "Balance and Composure",
-    "album": "The Things We Think We're MIssing (Live)",
+    "album": "The Things We Think We're Missing (Live)",
     "genres": [
       "emo",
       "rock",
@@ -566,7 +567,7 @@
   {
     "id": "caspian-hymn-for-the-greateset-generation",
     "artist": "Caspian",
-    "album": "Hymn for the Greateset Generation",
+    "album": "Hymn for the Greatest Generation",
     "genres": [
       "post-rock",
       "instrumental"
@@ -857,8 +858,8 @@
   },
   {
     "id": "explosians-in-the-sky-the-earth-is-a-cold-dead-place",
-    "artist": "Explosians in the Sky",
-    "album": "The Earth Is a Cold dead place",
+    "artist": "Explosions in the Sky",
+    "album": "The Earth Is Not a Cold Dead Place",
     "genres": [
       "post-rock",
       "instrumental"
@@ -875,7 +876,7 @@
   },
   {
     "id": "explosians-in-the-sky-end",
-    "artist": "Explosians in the Sky",
+    "artist": "Explosions in the Sky",
     "album": "End",
     "genres": [
       "post-rock",
@@ -1700,7 +1701,7 @@
   {
     "id": "kasbo-places-we-don-t-konw",
     "artist": "Kasbo",
-    "album": "Places we don't konw",
+    "album": "Places We Don't Know",
     "genres": [
       "electronic"
     ],
@@ -1716,7 +1717,7 @@
   {
     "id": "kendrick-lamar-good-kid-madd-city",
     "artist": "Kendrick Lamar",
-    "album": "Good Kid Madd City",
+    "album": "good kid, m.A.A.d city",
     "genres": [
       "hiphop",
       "rap"
@@ -1801,7 +1802,7 @@
   {
     "id": "kendrick-lamar-onx",
     "artist": "Kendrick Lamar",
-    "album": "ONX",
+    "album": "GNX",
     "genres": [
       "hiphop",
       "rap"
@@ -2141,7 +2142,7 @@
   {
     "id": "lupe-fiasco-samuri",
     "artist": "Lupe Fiasco",
-    "album": "Samuri",
+    "album": "Samurai",
     "genres": [
       "hiphop",
       "rap"
@@ -2163,7 +2164,8 @@
     "moods": [
       "dreamy"
     ],
-    "seasons": []
+    "seasons": [],
+    "skipCoverLookup": true
   },
   {
     "id": "mae-destination-beautiful",
@@ -2254,8 +2256,8 @@
   },
   {
     "id": "manchester-orchesta-i-m-like-a-virgin-losing-a-child",
-    "artist": "Manchester Orchesta",
-    "album": "I'm like a virgin losing a child",
+    "artist": "Manchester Orchestra",
+    "album": "I'm Like a Virgin Losing a Child",
     "genres": [
       "indie",
       "rock"
