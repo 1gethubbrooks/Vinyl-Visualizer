@@ -3,7 +3,10 @@
 
   var SLOT_COUNT = 8;
   var LS_KEY = "selectionWall.v1";
-  var COVER_CACHE_KEY = "selectionWall.coverCache.v1";
+  // v2: bumped because earlier code cached failed/rate-limited iTunes
+  // lookups as permanent "no match" results. Bumping this key abandons
+  // that bad cache so every album gets a fresh, throttled lookup.
+  var COVER_CACHE_KEY = "selectionWall.coverCache.v2";
 
   var THEMES = [
     { id: "summer", label: "Summer", desc: "Sun-drenched, upbeat, warm-weather listening.", seasons: ["summer"], moods: ["energetic", "uplifting", "dreamy"] },
@@ -23,7 +26,6 @@
   var catalogMap = {};      // id -> album (from data/catalog.json, plus manual coverUrl override)
   var wallState = { slots: new Array(SLOT_COUNT).fill(null), theme: "" };
   var coverCache = {};      // albumId -> {url, source, checkedAt} ; source: "itunes" | "manual" | "none"
-  var inFlight = {};        // albumId -> true while an iTunes lookup is running
 
   // ---------- persistence ----------
 
@@ -106,39 +108,96 @@
   }
 
   // ---------- iTunes cover lookup ----------
+  // iTunes's public search API rate-limits bursts of requests (roughly ~20/min
+  // per client). With 200+ albums on this page, firing every lookup at once
+  // gets most of them throttled. So lookups go through a queue with a small
+  // delay between each request, and a throttled/network failure is NOT
+  // cached as "no match" -- only a genuine empty result is -- so failed
+  // lookups get retried on the next visit instead of being stuck forever.
+
+  var LOOKUP_DELAY_MS = 350; // spacing between iTunes requests
+  var lookupQueue = [];
+  var queuedIds = {};
+  var queueRunning = false;
+
+  function queueCoverLookup(album) {
+    if (queuedIds[album.id]) return;
+    queuedIds[album.id] = true;
+    lookupQueue.push(album);
+    if (!queueRunning) runQueue();
+  }
+
+  function runQueue() {
+    if (lookupQueue.length === 0) { queueRunning = false; return; }
+    queueRunning = true;
+    var album = lookupQueue.shift();
+    fetchCoverFromItunes(album).then(function () {
+      setTimeout(runQueue, LOOKUP_DELAY_MS);
+    });
+  }
+
+  function normalizeForMatch(s) {
+    return String(s || "")
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  // crude token-overlap score: fraction of needle's words found in haystack
+  function overlapScore(needle, haystack) {
+    var needleWords = normalizeForMatch(needle).split(" ").filter(Boolean);
+    if (!needleWords.length) return 0;
+    var haystackNorm = " " + normalizeForMatch(haystack) + " ";
+    var hits = 0;
+    for (var i = 0; i < needleWords.length; i++) {
+      if (haystackNorm.indexOf(" " + needleWords[i] + " ") !== -1) hits++;
+    }
+    return hits / needleWords.length;
+  }
+
+  function pickBestResult(album, results) {
+    var best = null, bestScore = -1;
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      if (!r.artworkUrl100) continue;
+      var artistScore = overlapScore(album.artist, r.artistName || "");
+      var albumScore = overlapScore(album.album, r.collectionName || "");
+      // artist match matters most (avoid a same-titled album by someone else),
+      // album title closeness breaks ties between editions/live/deluxe versions
+      var score = artistScore * 2 + albumScore;
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+    // require at least a partial artist match; otherwise treat as no match
+    if (best && overlapScore(album.artist, best.artistName || "") < 0.5) return null;
+    return best;
+  }
 
   function fetchCoverFromItunes(album) {
-    if (inFlight[album.id]) return;
-    inFlight[album.id] = true;
     var term = encodeURIComponent(album.artist + " " + album.album);
-    var url = "https://itunes.apple.com/search?term=" + term + "&entity=album&limit=3";
-    fetch(url).then(function (res) {
-      if (!res.ok) throw new Error("bad response");
+    var url = "https://itunes.apple.com/search?term=" + term + "&entity=album&limit=10";
+    return fetch(url).then(function (res) {
+      if (res.status === 403 || res.status === 429) throw new Error("rate limited");
+      if (!res.ok) throw new Error("bad response " + res.status);
       return res.json();
     }).then(function (data) {
       var results = (data && data.results) || [];
-      var best = results[0];
-      // prefer a result whose artist name roughly matches
-      var artistLower = album.artist.toLowerCase();
-      for (var i = 0; i < results.length; i++) {
-        if (results[i].artistName && results[i].artistName.toLowerCase().indexOf(artistLower.split(" ")[0]) !== -1) {
-          best = results[i];
-          break;
-        }
-      }
+      var best = pickBestResult(album, results);
       if (best && best.artworkUrl100) {
         var hiRes = best.artworkUrl100.replace("100x100bb", "600x600bb");
         coverCache[album.id] = { url: hiRes, source: "itunes", checkedAt: Date.now() };
       } else {
+        // genuine "iTunes has nothing for this search" -- safe to cache
         coverCache[album.id] = { url: null, source: "none", checkedAt: Date.now() };
       }
       saveCoverCache();
-      delete inFlight[album.id];
+      delete queuedIds[album.id];
       renderAll();
     }).catch(function () {
-      coverCache[album.id] = { url: null, source: "none", checkedAt: Date.now() };
-      saveCoverCache();
-      delete inFlight[album.id];
+      // network error / rate limit / bad response -- do NOT cache this as
+      // "no match". Just let it fall back to a placeholder for now; it will
+      // be retried the next time the page loads.
+      delete queuedIds[album.id];
       renderAll();
     });
   }
@@ -148,8 +207,9 @@
     if (album.manualCoverUrl) return; // manual override wins, no lookup needed
     if (album.skipCoverLookup) return; // local/small label not on iTunes, don't bother
     var cached = coverCache[album.id];
-    if (cached) return; // already resolved (found or confirmed none) or being resolved
-    fetchCoverFromItunes(album);
+    if (cached) return; // already resolved (found, or confirmed no match) this session
+    if (queuedIds[album.id]) return; // already queued
+    queueCoverLookup(album);
   }
 
   // ---------- rendering: art ----------
@@ -519,6 +579,25 @@
       if (file) importData(file);
       e.target.value = "";
     });
+    document.getElementById("recheck-covers-btn").addEventListener("click", recheckMissingCovers);
+  }
+
+  function recheckMissingCovers() {
+    var btn = document.getElementById("recheck-covers-btn");
+    var missing = allAlbums().filter(function (a) {
+      return !a.manualCoverUrl && !a.skipCoverLookup && (!coverCache[a.id] || !coverCache[a.id].url);
+    });
+    // drop cached "no match" results too, so they get a fresh try
+    missing.forEach(function (a) { delete coverCache[a.id]; });
+    saveCoverCache();
+    if (btn) { btn.disabled = true; btn.textContent = "Checking " + missing.length + "…"; }
+    missing.forEach(function (a) { ensureCoverLookup(a); });
+    var checkDone = setInterval(function () {
+      if (lookupQueue.length === 0 && !queueRunning) {
+        clearInterval(checkDone);
+        if (btn) { btn.disabled = false; btn.textContent = "Re-check missing covers"; }
+      }
+    }, 400);
   }
 
   function boot() {
