@@ -146,6 +146,7 @@
   function ensureCoverLookup(album) {
     if (!album) return;
     if (album.manualCoverUrl) return; // manual override wins, no lookup needed
+    if (album.skipCoverLookup) return; // local/small label not on iTunes, don't bother
     var cached = coverCache[album.id];
     if (cached) return; // already resolved (found or confirmed none) or being resolved
     fetchCoverFromItunes(album);
