@@ -192,13 +192,12 @@
       }
       saveCoverCache();
       delete queuedIds[album.id];
-      renderAll();
+      patchCoverArt(album.id);
     }).catch(function () {
       // network error / rate limit / bad response -- do NOT cache this as
       // "no match". Just let it fall back to a placeholder for now; it will
       // be retried the next time the page loads.
       delete queuedIds[album.id];
-      renderAll();
     });
   }
 
@@ -256,6 +255,33 @@
     }
 
     renderPlaceholder(container, album);
+  }
+
+  // Update just the art for one album, wherever it currently appears
+  // (a wall slot's art holder, a catalog row's cover cell) without
+  // rebuilding any <select> -- rebuilding a <select> closes it if the
+  // viewer has it open, which is why cover resolution must never call
+  // a full renderAll().
+  function patchCoverArt(albumId) {
+    var album = catalogMap[albumId];
+    if (!album) return;
+    document.querySelectorAll('.art-holder[data-album-id="' + albumId + '"]').forEach(function (holder) {
+      renderArt(holder, album);
+    });
+    document.querySelectorAll('.cover-cell[data-album-id="' + albumId + '"]').forEach(function (cell) {
+      cell.innerHTML = "";
+      var url = coverUrlFor(albumId);
+      if (url) {
+        var thumb = document.createElement("img");
+        thumb.className = "td-cover-thumb";
+        thumb.src = url;
+        thumb.alt = "";
+        thumb.onerror = function () { thumb.style.visibility = "hidden"; };
+        cell.appendChild(thumb);
+      } else {
+        cell.appendChild(el("div", "td-cover-thumb"));
+      }
+    });
   }
 
   // ---------- rendering: wall ----------
@@ -316,8 +342,10 @@
         var sleeve = el("div", "sleeve");
         sleeve.appendChild(el("span", "slot-index", (i + 1) + "/8"));
         var artHolder = el("div");
+        artHolder.className = "art-holder";
         artHolder.style.width = "100%";
         artHolder.style.height = "100%";
+        if (album) artHolder.dataset.albumId = album.id;
         sleeve.appendChild(artHolder);
         renderArt(artHolder, album);
         slot.appendChild(sleeve);
@@ -391,6 +419,8 @@
       tr.appendChild(tdT);
 
       var tdCover = document.createElement("td");
+      tdCover.className = "cover-cell";
+      tdCover.dataset.albumId = a.id;
       var url = coverUrlFor(a.id);
       if (url) {
         var thumb = document.createElement("img");
